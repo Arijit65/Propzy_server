@@ -5,10 +5,14 @@ const jwt = require("jsonwebtoken");
 // Admin login
 exports.adminLogin = async (req, res) => {
   try {
+    console.log('🔐 Admin Login Attempt');
+    console.log('Request Body:', req.body);
+    
     const { email, password } = req.body;
 
     // Validate input
     if (!email || !password) {
+      console.log('❌ Missing credentials');
       return res.status(400).json({
         success: false,
         error: "Email and password are required"
@@ -23,7 +27,10 @@ exports.adminLogin = async (req, res) => {
       }
     });
 
+    console.log('👤 Admin user found:', user ? 'Yes' : 'No');
+
     if (!user) {
+      console.log('❌ No admin found with email:', email);
       return res.status(401).json({
         success: false,
         error: "Invalid admin credentials"
@@ -32,7 +39,10 @@ exports.adminLogin = async (req, res) => {
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
+    console.log('🔑 Password valid:', isPasswordValid);
+    
     if (!isPasswordValid) {
+      console.log('❌ Invalid password for admin:', email);
       return res.status(401).json({
         success: false,
         error: "Invalid admin credentials"
@@ -46,6 +56,8 @@ exports.adminLogin = async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    console.log('✅ Admin login successful for:', email);
+
     res.status(200).json({
       success: true,
       message: "Admin login successful",
@@ -58,7 +70,7 @@ exports.adminLogin = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error("Admin login error:", err);
+    console.error("❌ Admin login error:", err);
     res.status(500).json({
       success: false,
       error: "Login failed",

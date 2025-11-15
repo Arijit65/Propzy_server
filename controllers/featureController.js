@@ -221,7 +221,7 @@ exports.getAllProperties = async (req, res) => {
   }
 };
 
-// Get Property by ID
+// Get Property by ID (Public for approved properties)
 exports.getPropertyById = async (req, res) => {
   try {
     const { propertyId } = req.params;
@@ -243,17 +243,23 @@ exports.getPropertyById = async (req, res) => {
       });
     }
 
-    // Check if property is approved or if user owns the property
-    if (property.status !== 'approved' && property.userId !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        error: "Access denied"
-      });
+    // Allow public access only to approved properties
+    // If property is not approved, require authentication
+    if (property.status !== 'approved') {
+      // Check if user is authenticated and owns the property
+      if (!req.user || property.userId !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          error: "Property not available for public viewing"
+        });
+      }
     }
 
+    console.log('✅ Property fetched:', property.id);
+    
     res.status(200).json({
       success: true,
-      property
+      data: property
     });
   } catch (err) {
     console.error("Error fetching property:", err);
@@ -459,6 +465,162 @@ exports.searchProperties = async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Search failed",
+      details: err.message
+    });
+  }
+};
+
+// Get All Properties from All Locations (Public route)
+exports.getAllLocationsProperties = async (req, res) => {
+  try {
+    console.log('📍 getAllLocationsProperties called');
+    console.log('Query params:', req.query);
+    
+    const {
+      purpose,
+      propertyType,
+      minPrice,
+      maxPrice,
+      bedrooms,
+      page = 1,
+      limit = 20
+    } = req.query;
+
+    // Build where clause - only approved properties
+    const whereClause = { 
+      status: 'approved',
+      isActive: true 
+    };
+    
+    console.log('Where clause:', whereClause);
+
+    if (purpose) whereClause.purpose = purpose;
+    if (propertyType) whereClause.propertyType = propertyType;
+    if (bedrooms) whereClause.bedrooms = bedrooms;
+
+    // Price range filter
+    if (minPrice || maxPrice) {
+      whereClause.expectedPrice = {};
+      if (minPrice) whereClause.expectedPrice[Op.gte] = minPrice;
+      if (maxPrice) whereClause.expectedPrice[Op.lte] = maxPrice;
+    }
+
+    const offset = (page - 1) * limit;
+
+    const { count, rows: properties } = await Property.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          as: 'owner',
+          attributes: ['id', 'userName', 'email', 'phone']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    console.log(`✅ Found ${count} properties, returning ${properties.length}`);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        properties,
+        count: properties.length,
+        total: count,
+        totalPages: Math.ceil(count / limit),
+        currentPage: parseInt(page)
+      }
+    });
+  } catch (err) {
+    console.error("Error fetching all properties:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch properties",
+      details: err.message
+    });
+  }
+};
+
+// Get Properties by City/Location (Public route)
+exports.getPropertiesByLocation = async (req, res) => {
+  try {
+    console.log('📍 getPropertiesByLocation called');
+    console.log('Location param:', req.params.location);
+    console.log('Query params:', req.query);
+    
+    const { location } = req.params;
+    const {
+      purpose,
+      propertyType,
+      minPrice,
+      maxPrice,
+      bedrooms,
+      locality,
+      page = 1,
+      limit = 20
+    } = req.query;
+
+    // Normalize location for case-insensitive matching
+    const normalizedLocation = location.replace(/-/g, ' ');
+    console.log('Normalized location:', normalizedLocation);
+
+    // Build where clause
+    const whereClause = {
+      status: 'approved',
+      isActive: true,
+      city: { [Op.iLike]: `%${normalizedLocation}%` }
+    };
+
+    if (purpose) whereClause.purpose = purpose;
+    if (propertyType) whereClause.propertyType = propertyType;
+    if (bedrooms) whereClause.bedrooms = bedrooms;
+    if (locality) whereClause.locality = { [Op.iLike]: `%${locality}%` };
+
+    // Price range filter
+    if (minPrice || maxPrice) {
+      whereClause.expectedPrice = {};
+      if (minPrice) whereClause.expectedPrice[Op.gte] = minPrice;
+      if (maxPrice) whereClause.expectedPrice[Op.lte] = maxPrice;
+    }
+
+    const offset = (page - 1) * limit;
+
+    console.log('Final where clause:', whereClause);
+    
+    const { count, rows: properties } = await Property.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          as: 'owner',
+          attributes: ['id', 'userName', 'email', 'phone']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    console.log(`✅ Found ${count} properties in ${normalizedLocation}, returning ${properties.length}`);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        properties,
+        location: normalizedLocation,
+        count: properties.length,
+        total: count,
+        totalPages: Math.ceil(count / limit),
+        currentPage: parseInt(page)
+      }
+    });
+  } catch (err) {
+    console.error("Error fetching properties by location:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch properties",
       details: err.message
     });
   }

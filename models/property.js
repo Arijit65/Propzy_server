@@ -13,11 +13,12 @@ module.exports = (sequelize, DataTypes) => {
     // User reference
     userId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'Users',
-        key: 'id'
-      }
+      allowNull: false
+      // TODO: Re-enable foreign key constraint after user authentication is properly implemented
+      // references: {
+      //   model: 'Users',
+      //   key: 'id'
+      // }
     },
 
     // Step 1: Basic Details

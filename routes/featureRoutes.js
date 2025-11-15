@@ -4,33 +4,39 @@ const featureController = require("../controllers/featureController");
 const auth = require("../middlewares/authMiddleware");
 const cloudUpload = require("../middlewares/multer");
 
-// Property Routes (Protected)
+// Property Routes
 
-// Create a new property
+// Create a new property (Protected)
 router.post("/properties/create", auth, cloudUpload.fields([
   { name: 'photos', maxCount: 20 },
   { name: 'video', maxCount: 1 }
 ]), featureController.createProperty);
 
-// Get all properties (with optional filters)
-router.get("/properties", auth, featureController.getAllProperties);
+// Get all properties from all locations (Public)
+router.get("/all-locations", featureController.getAllLocationsProperties);
 
-// Get my properties
-router.get("/properties/my", auth, featureController.getMyProperties);
+// Get properties by location/city (Public)
+router.get("/properties/:location", featureController.getPropertiesByLocation);
 
-// Search properties
-router.get("/properties/search", auth, featureController.searchProperties);
+// Get all properties (with optional filters) - Legacy route
+router.get("/properties", featureController.getAllProperties);
 
-// Get property by ID
-router.get("/properties/:propertyId", auth, featureController.getPropertyById);
+// Get my properties (Protected)
+router.get("/my-properties", auth, featureController.getMyProperties);
 
-// Get properties by user ID
-router.get("/properties/user/:userId", auth, featureController.getPropertiesByUserId);
+// Search properties (Public)
+router.get("/search", featureController.searchProperties);
 
-// Update property
-router.put("/properties/:propertyId", auth, featureController.updateProperty);
+// Get property by ID (Public for approved, Protected for others)
+router.get("/property/:propertyId", featureController.getPropertyById);
 
-// Delete property
-router.delete("/properties/:propertyId", auth, featureController.deleteProperty);
+// Get properties by user ID (Protected)
+router.get("/user/:userId/properties", auth, featureController.getPropertiesByUserId);
+
+// Update property (Protected)
+router.put("/property/:propertyId", auth, featureController.updateProperty);
+
+// Delete property (Protected)
+router.delete("/property/:propertyId", auth, featureController.deleteProperty);
 
 module.exports = router;
