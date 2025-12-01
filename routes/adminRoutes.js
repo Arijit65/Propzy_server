@@ -15,4 +15,9 @@ router.put('/:propertyId/approve', authMiddleware, isAdmin, propertyController.a
 router.put('/:propertyId/reject', authMiddleware, isAdmin, propertyController.rejectProperty);
 router.delete('/:propertyId', authMiddleware, isAdmin, propertyController.deleteProperty);
 
+// Property categorization routes
+router.get('/properties', authMiddleware, isAdmin, propertyController.getAllPropertiesForAdmin);
+router.patch('/properties/:propertyId/categorize', authMiddleware, isAdmin, propertyController.updatePropertyCategorization);
+router.patch('/properties/bulk-categorize', authMiddleware, isAdmin, propertyController.bulkUpdatePropertyCategorization);
+
 module.exports = router;

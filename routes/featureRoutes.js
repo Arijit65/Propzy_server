@@ -39,4 +39,21 @@ router.put("/property/:propertyId", auth, featureController.updateProperty);
 // Delete property (Protected)
 router.delete("/property/:propertyId", auth, featureController.deleteProperty);
 
+// Categorized Property Routes (Public)
+
+// Get featured properties
+router.get("/featured", featureController.getFeaturedProperties);
+
+// Get top pick properties
+router.get("/top-picks", featureController.getTopPickProperties);
+
+// Get investment properties
+router.get("/investment", featureController.getInvestmentProperties);
+
+// Get recently added properties
+router.get("/recently-added", featureController.getRecentlyAddedProperties);
+
+// Get highlighted properties
+router.get("/highlighted", featureController.getHighlightedProperties);
+
 module.exports = router;

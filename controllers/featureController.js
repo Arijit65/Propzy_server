@@ -625,3 +625,203 @@ exports.getPropertiesByLocation = async (req, res) => {
     });
   }
 };
+
+// Get Featured Properties (Public route)
+exports.getFeaturedProperties = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    const properties = await Property.findAll({
+      where: {
+        status: 'approved',
+        isActive: true,
+        isFeatured: true,
+        // Check if featuredUntil is null or in the future
+        [Op.or]: [
+          { featuredUntil: null },
+          { featuredUntil: { [Op.gt]: new Date() } }
+        ]
+      },
+      include: [
+        {
+          model: User,
+          as: 'owner',
+          attributes: ['id', 'userName', 'email', 'phone']
+        }
+      ],
+      order: [['priority', 'DESC'], ['createdAt', 'DESC']],
+      limit: parseInt(limit)
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        properties,
+        count: properties.length
+      }
+    });
+  } catch (err) {
+    console.error("Error fetching featured properties:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch featured properties",
+      details: err.message
+    });
+  }
+};
+
+// Get Top Picks (Public route)
+exports.getTopPickProperties = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    const properties = await Property.findAll({
+      where: {
+        status: 'approved',
+        isActive: true,
+        isTopPick: true
+      },
+      include: [
+        {
+          model: User,
+          as: 'owner',
+          attributes: ['id', 'userName', 'email', 'phone']
+        }
+      ],
+      order: [['priority', 'DESC'], ['createdAt', 'DESC']],
+      limit: parseInt(limit)
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        properties,
+        count: properties.length
+      }
+    });
+  } catch (err) {
+    console.error("Error fetching top pick properties:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch top pick properties",
+      details: err.message
+    });
+  }
+};
+
+// Get Investment Properties (Public route)
+exports.getInvestmentProperties = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    const properties = await Property.findAll({
+      where: {
+        status: 'approved',
+        isActive: true,
+        isInvestmentProperty: true
+      },
+      include: [
+        {
+          model: User,
+          as: 'owner',
+          attributes: ['id', 'userName', 'email', 'phone']
+        }
+      ],
+      order: [['priority', 'DESC'], ['createdAt', 'DESC']],
+      limit: parseInt(limit)
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        properties,
+        count: properties.length
+      }
+    });
+  } catch (err) {
+    console.error("Error fetching investment properties:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch investment properties",
+      details: err.message
+    });
+  }
+};
+
+// Get Recently Added Properties (Public route)
+exports.getRecentlyAddedProperties = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    const properties = await Property.findAll({
+      where: {
+        status: 'approved',
+        isActive: true,
+        isRecentlyAdded: true
+      },
+      include: [
+        {
+          model: User,
+          as: 'owner',
+          attributes: ['id', 'userName', 'email', 'phone']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit)
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        properties,
+        count: properties.length
+      }
+    });
+  } catch (err) {
+    console.error("Error fetching recently added properties:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch recently added properties",
+      details: err.message
+    });
+  }
+};
+
+// Get Highlighted Projects (Public route)
+exports.getHighlightedProperties = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    const properties = await Property.findAll({
+      where: {
+        status: 'approved',
+        isActive: true,
+        isHighlighted: true
+      },
+      include: [
+        {
+          model: User,
+          as: 'owner',
+          attributes: ['id', 'userName', 'email', 'phone']
+        }
+      ],
+      order: [['priority', 'DESC'], ['createdAt', 'DESC']],
+      limit: parseInt(limit)
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        properties,
+        count: properties.length
+      }
+    });
+  } catch (err) {
+    console.error("Error fetching highlighted properties:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch highlighted properties",
+      details: err.message
+    });
+  }
+};

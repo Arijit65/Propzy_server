@@ -327,3 +327,184 @@ exports.deleteProperty = async (req, res) => {
     });
   }
 };
+
+// Get All Properties for Admin (with filters and pagination)
+exports.getAllPropertiesForAdmin = async (req, res) => {
+  try {
+    const { Op } = require("sequelize");
+    const {
+      status = 'all',
+      propertyType = 'all',
+      purpose = 'all',
+      category = 'all',
+      city = '',
+      search = '',
+      page = 1,
+      limit = 20
+    } = req.query;
+
+    // Build where clause
+    const whereClause = {};
+
+    if (status !== 'all') {
+      whereClause.status = status;
+    }
+
+    if (propertyType !== 'all') {
+      whereClause.propertyType = propertyType;
+    }
+
+    if (purpose !== 'all') {
+      whereClause.purpose = purpose;
+    }
+
+    if (city) {
+      whereClause.city = { [Op.iLike]: `%${city}%` };
+    }
+
+    if (search) {
+      whereClause[Op.or] = [
+        { city: { [Op.iLike]: `%${search}%` } },
+        { locality: { [Op.iLike]: `%${search}%` } },
+        { propertyDescription: { [Op.iLike]: `%${search}%` } },
+        { apartment: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    // Category filters
+    if (category !== 'all') {
+      switch (category) {
+        case 'featured':
+          whereClause.isFeatured = true;
+          break;
+        case 'topPick':
+          whereClause.isTopPick = true;
+          break;
+        case 'highlighted':
+          whereClause.isHighlighted = true;
+          break;
+        case 'investment':
+          whereClause.isInvestmentProperty = true;
+          break;
+        case 'recent':
+          whereClause.isRecentlyAdded = true;
+          break;
+      }
+    }
+
+    const offset = (page - 1) * limit;
+
+    const { count, rows: properties } = await Property.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          as: 'owner',
+          attributes: ['id', 'userName', 'email', 'phone']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        properties,
+        count: properties.length,
+        total: count,
+        totalPages: Math.ceil(count / limit),
+        currentPage: parseInt(page)
+      }
+    });
+  } catch (err) {
+    console.error("Error fetching properties for admin:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch properties",
+      details: err.message
+    });
+  }
+};
+
+// Update Property Categorization
+exports.updatePropertyCategorization = async (req, res) => {
+  try {
+    const { propertyId } = req.params;
+    const updateData = req.body;
+
+    // Validate the property exists
+    const property = await Property.findByPk(propertyId);
+    if (!property) {
+      return res.status(404).json({
+        success: false,
+        error: "Property not found"
+      });
+    }
+
+    // Update property
+    await property.update(updateData);
+
+    // Fetch updated property with user details
+    const updatedProperty = await Property.findByPk(propertyId, {
+      include: [
+        {
+          model: User,
+          as: 'owner',
+          attributes: ['id', 'userName', 'email', 'phone']
+        }
+      ]
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Property categorization updated successfully",
+      property: updatedProperty
+    });
+  } catch (err) {
+    console.error("Error updating property categorization:", err);
+    res.status(500).json({
+      success: false,
+      error: "Update failed",
+      details: err.message
+    });
+  }
+};
+
+// Bulk Update Property Categorization
+exports.bulkUpdatePropertyCategorization = async (req, res) => {
+  try {
+    const { Op } = require("sequelize");
+    const { propertyIds, ...updateData } = req.body;
+
+    if (!propertyIds || !Array.isArray(propertyIds) || propertyIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Property IDs are required"
+      });
+    }
+
+    // Update all properties
+    const [updatedCount] = await Property.update(updateData, {
+      where: {
+        id: {
+          [Op.in]: propertyIds
+        }
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully updated ${updatedCount} properties`,
+      updatedCount
+    });
+  } catch (err) {
+    console.error("Error bulk updating properties:", err);
+    res.status(500).json({
+      success: false,
+      error: "Bulk update failed",
+      details: err.message
+    });
+  }
+};

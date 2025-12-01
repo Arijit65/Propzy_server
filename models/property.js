@@ -224,6 +224,43 @@ module.exports = (sequelize, DataTypes) => {
     isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true
+    },
+
+    // Property categorization fields
+    isFeatured: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    isTopPick: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    isHighlighted: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    isInvestmentProperty: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    isRecentlyAdded: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    priority: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: 'Higher numbers = higher priority in listings'
+    },
+    featuredUntil: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: 'Featured properties expiry date'
+    },
+    tags: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      defaultValue: [],
+      comment: 'Custom tags for property categorization'
     }
   }, {
     sequelize,
