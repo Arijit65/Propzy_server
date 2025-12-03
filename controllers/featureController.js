@@ -749,6 +749,7 @@ exports.getInvestmentProperties = async (req, res) => {
 };
 
 // Get Recently Added Properties (Public route)
+// Shows the most recent approved properties regardless of isRecentlyAdded flag
 exports.getRecentlyAddedProperties = async (req, res) => {
   try {
     const { limit = 10 } = req.query;
@@ -756,8 +757,8 @@ exports.getRecentlyAddedProperties = async (req, res) => {
     const properties = await Property.findAll({
       where: {
         status: 'approved',
-        isActive: true,
-        isRecentlyAdded: true
+        isActive: true
+        // Removed isRecentlyAdded check - now shows latest properties by createdAt
       },
       include: [
         {

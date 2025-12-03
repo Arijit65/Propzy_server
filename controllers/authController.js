@@ -49,14 +49,16 @@ exports.adminLogin = async (req, res) => {
       });
     }
 
-    // Generate JWT token
+    // Generate JWT token (use JWT_EXPIRATION from .env or default to 1h)
+    const expiresIn = process.env.JWT_EXPIRATION || '1h';
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn }
     );
 
     console.log('✅ Admin login successful for:', email);
+    console.log('🔑 Token expires in:', expiresIn);
 
     res.status(200).json({
       success: true,

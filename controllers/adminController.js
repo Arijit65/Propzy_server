@@ -1,4 +1,4 @@
-const { Property, User } = require("../models");
+const { Property, User, Enquiry } = require("../models");
 
 // Create a new property (for posting)
 exports.createProperty = async (req, res) => {
@@ -504,6 +504,250 @@ exports.bulkUpdatePropertyCategorization = async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Bulk update failed",
+      details: err.message
+    });
+  }
+};
+
+// ==================== ENQUIRY MANAGEMENT ====================
+
+// Get All Enquiries (Admin Only)
+exports.getAllEnquiries = async (req, res) => {
+  try {
+    const { Op } = require("sequelize");
+    const {
+      status = 'all',
+      source = 'all',
+      search = '',
+      page = 1,
+      limit = 20
+    } = req.query;
+
+    // Build where clause
+    const whereClause = {};
+
+    if (status !== 'all') {
+      whereClause.status = status;
+    }
+
+    if (source !== 'all') {
+      whereClause.source = source;
+    }
+
+    if (search) {
+      whereClause[Op.or] = [
+        { name: { [Op.iLike]: `%${search}%` } },
+        { email: { [Op.iLike]: `%${search}%` } },
+        { phone: { [Op.iLike]: `%${search}%` } },
+        { location: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    const offset = (page - 1) * limit;
+
+    const { count, rows: enquiries } = await Enquiry.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: Property,
+          as: 'property',
+          attributes: ['id', 'city', 'locality', 'propertyType', 'bedrooms', 'expectedPrice'],
+          required: false
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        enquiries,
+        count: enquiries.length,
+        total: count,
+        totalPages: Math.ceil(count / limit),
+        currentPage: parseInt(page)
+      }
+    });
+  } catch (err) {
+    console.error("Error fetching enquiries:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch enquiries",
+      details: err.message
+    });
+  }
+};
+
+// Get Single Enquiry by ID (Admin Only)
+exports.getEnquiryById = async (req, res) => {
+  try {
+    const { enquiryId } = req.params;
+
+    const enquiry = await Enquiry.findByPk(enquiryId, {
+      include: [
+        {
+          model: Property,
+          as: 'property',
+          attributes: ['id', 'city', 'locality', 'propertyType', 'bedrooms', 'expectedPrice', 'photos'],
+          required: false
+        }
+      ]
+    });
+
+    if (!enquiry) {
+      return res.status(404).json({
+        success: false,
+        error: "Enquiry not found"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      enquiry
+    });
+  } catch (err) {
+    console.error("Error fetching enquiry:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch enquiry",
+      details: err.message
+    });
+  }
+};
+
+// Update Enquiry Status (Admin Only)
+exports.updateEnquiryStatus = async (req, res) => {
+  try {
+    const { enquiryId } = req.params;
+    const { status, adminNotes } = req.body;
+
+    const enquiry = await Enquiry.findByPk(enquiryId);
+
+    if (!enquiry) {
+      return res.status(404).json({
+        success: false,
+        error: "Enquiry not found"
+      });
+    }
+
+    // Update status
+    enquiry.status = status;
+    
+    // Update adminNotes if provided
+    if (adminNotes !== undefined) {
+      enquiry.adminNotes = adminNotes;
+    }
+
+    // Update timestamps based on status
+    if (status === 'contacted' && !enquiry.contactedAt) {
+      enquiry.contactedAt = new Date();
+    }
+    if (status === 'resolved' && !enquiry.resolvedAt) {
+      enquiry.resolvedAt = new Date();
+    }
+
+    await enquiry.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Enquiry status updated successfully",
+      enquiry
+    });
+  } catch (err) {
+    console.error("Error updating enquiry status:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to update enquiry status",
+      details: err.message
+    });
+  }
+};
+
+// Delete Enquiry (Admin Only)
+exports.deleteEnquiry = async (req, res) => {
+  try {
+    const { enquiryId } = req.params;
+
+    const enquiry = await Enquiry.findByPk(enquiryId);
+
+    if (!enquiry) {
+      return res.status(404).json({
+        success: false,
+        error: "Enquiry not found"
+      });
+    }
+
+    await enquiry.destroy();
+
+    res.status(200).json({
+      success: true,
+      message: "Enquiry deleted successfully"
+    });
+  } catch (err) {
+    console.error("Error deleting enquiry:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete enquiry",
+      details: err.message
+    });
+  }
+};
+
+// Get Enquiry Statistics (Admin Only)
+exports.getEnquiryStats = async (req, res) => {
+  try {
+    const { Op } = require("sequelize");
+
+    // Get total enquiries
+    const totalEnquiries = await Enquiry.count();
+
+    // Get enquiries by status
+    const pendingEnquiries = await Enquiry.count({ where: { status: 'pending' } });
+    const contactedEnquiries = await Enquiry.count({ where: { status: 'contacted' } });
+    const resolvedEnquiries = await Enquiry.count({ where: { status: 'resolved' } });
+    const closedEnquiries = await Enquiry.count({ where: { status: 'closed' } });
+
+    // Get enquiries by source
+    const homeEnquiries = await Enquiry.count({ where: { source: 'home' } });
+    const propertyDetailEnquiries = await Enquiry.count({ where: { source: 'property_detail' } });
+    const otherEnquiries = await Enquiry.count({ where: { source: 'other' } });
+
+    // Get enquiries from last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentEnquiries = await Enquiry.count({
+      where: {
+        createdAt: {
+          [Op.gte]: thirtyDaysAgo
+        }
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        total: totalEnquiries,
+        byStatus: {
+          pending: pendingEnquiries,
+          contacted: contactedEnquiries,
+          resolved: resolvedEnquiries,
+          closed: closedEnquiries
+        },
+        bySource: {
+          home: homeEnquiries,
+          propertyDetail: propertyDetailEnquiries,
+          other: otherEnquiries
+        },
+        recentEnquiries
+      }
+    });
+  } catch (err) {
+    console.error("Error fetching enquiry stats:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch enquiry statistics",
       details: err.message
     });
   }

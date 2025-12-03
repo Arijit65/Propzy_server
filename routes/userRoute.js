@@ -7,6 +7,9 @@ const auth = require("../middlewares/authMiddleware");
 router.post("/register", userController.register);
 router.post("/login", userController.login);
 
+// Enquiry submission (Public - No auth required)
+router.post("/enquiry", userController.submitEnquiry);
+
 // Protected routes
 router.get("/me", auth, userController.getCurrentUser);
 router.put("/username", auth, userController.setUsername);

@@ -6,6 +6,9 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       // Property belongs to a User (the owner/poster)
       Property.belongsTo(models.User, { foreignKey: 'userId', as: 'owner' });
+      
+      // Property has many Enquiries
+      Property.hasMany(models.Enquiry, { foreignKey: 'propertyId', as: 'enquiries' });
     }
   }
 
